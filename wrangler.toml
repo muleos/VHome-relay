@@ -1,0 +1,18 @@
+name = "vhome-relay"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# 路由口令：写进 VHome 设置页「云端中转地址」末尾（https://<域名>/<TOKEN>）。
+# 建议部署完成后在 Cloudflare 控制台 → 你的 Worker → 设置 → 变量里改成自己的随机串。
+[vars]
+TOKEN = "vhome-relay-2026"
+
+# 互动消息代查（官方消息/评论/赞/@我的，App 离线时由中转代查并推传送鸽）
+[triggers]
+crons = ["* * * * *"]
+
+# 绑定名必须是 VHOME_KV（worker.js 里写死的）。
+# 通过下方「Deploy to Cloudflare」按钮部署时，KV 会自动创建并回填 id，无需手动修改。
+[[kv_namespaces]]
+binding = "VHOME_KV"
+id = "PLACEHOLDER_AUTO_PROVISIONED"
