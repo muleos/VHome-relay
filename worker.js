@@ -83,11 +83,10 @@ export default {
     }
   },
 
-  /** P394：互动消息代查（wrangler.toml 配 crons 后由平台定时拉起） */
+  /** P394：互动消息代查（wrangler.toml 配 crons 后由平台定时拉起）
+   *  P405：去掉 hmsEnabled 门槛 —— 会话凭据上报已不依赖华为推送密钥，
+   *  只要有人报过 /hms（现在允许纯会话，t 可空）就代查 */
   async scheduled(controller, env, ctx) {
-    if (!hmsEnabled(env)) {
-      return;
-    }
     const list = await env.VHOME_KV.list({ prefix: 'hms:' });
     for (const key of list.keys) {
       const uid = key.name.slice(4);
@@ -178,14 +177,13 @@ async function sendHms(env, token, title, msg) {
   return { http: res.status, body: body.slice(0, 200), ok: res.status === 200 && code === '80000000', code };
 }
 
-/** POST /hms { u, t, s? } —— 华为 pushToken + 会话凭据（P394） */
+/** POST /hms { u, t?, s? } —— P405：会话凭据上报（t 可空，不再要求华为 pushToken） */
 async function onHms(request, env) {
   const b = await request.json();
   const u = str(b.u);
-  const t = str(b.t);
-  if (!u || !t) return json({ ok: false, error: 'no uid/token' }, 400);
+  if (!u) return json({ ok: false, error: 'no uid' }, 400);
   await env.VHOME_KV.put(`hms:${u}`, JSON.stringify({
-    t: t,
+    t: str(b.t),
     s: str(b.s),
     at: Date.now()
   }), { expirationTtl: 604800 });
@@ -300,7 +298,8 @@ function digestItem(key, it) {
 }
 
 async function pollInteractionsFor(env, uid, h) {
-  if (!h || !h.t || !h.s) {
+  // P405：只要会话凭据就代查（不再要求华为 pushToken）
+  if (!h || !h.s) {
     return;
   }
   let sess;
